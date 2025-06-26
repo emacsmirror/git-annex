@@ -39,10 +39,10 @@
 
 ;;; Code:
 
+(require 'cl-lib)
 (eval-when-compile
-  (require 'dired nil t)	      ; for variable dired-mode-map
-  (require 'dired-aux nil t)	      ; for function dired-relist-file
-  (require 'cl))
+  (require 'dired nil t)                ; for variable dired-mode-map
+  (require 'dired-aux nil t))           ; for function dired-relist-file
 
 (defgroup git-annex nil
   "Mode for easy editing of git-annex'd files"
@@ -64,37 +64,37 @@ otherwise you will have to commit by hand."
 
 (defun git-annex--toggle-unlock ()
   (when (string=
-		 (vc-backend buffer-file-name)
-		 "Git"
-		 )
-	  (when (and buffer-file-name buffer-read-only
-				 (file-symlink-p buffer-file-name))
-		(let ((target (nth 0 (file-attributes buffer-file-name))))
-		  (assert (stringp target))
-		  (when (string-match "\\.git/annex/" target)
-			(call-process "git" nil nil nil "annex" "edit"
-						  (file-relative-name buffer-file-name default-directory))
-			(let ((here (point-marker)))
-			  (unwind-protect
-				  (revert-buffer nil t t)
-				(goto-char here)))
-			(add-hook 'kill-buffer-hook 'git-annex-add-file nil t)
-			(setq buffer-read-only t))))
-	(when (and buffer-file-name (not buffer-read-only)
-			   (not (file-symlink-p buffer-file-name)))
-	  (let ((cur (current-buffer))
-			(name buffer-file-name)
-			(result))
-		(with-temp-buffer
-		  (call-process "git" nil t nil "diff-files" "--diff-filter=T" "-G^[./]*\\.git/annex/objects/" "--name-only" "--" (file-relative-name name default-directory))
-		  (setq result (buffer-string)))
-		(unless (string= result "")
-		  (git-annex-add-file)
-		  (let ((here (point-marker)))
-			(unwind-protect
-				(revert-buffer nil t t)
-			  (goto-char here)))
-		(setq buffer-read-only nil)))))
+	 (vc-backend buffer-file-name)
+	 "Git"
+	 )
+    (when (and buffer-file-name buffer-read-only
+	       (file-symlink-p buffer-file-name))
+      (let ((target (nth 0 (file-attributes buffer-file-name))))
+	(cl-assert (stringp target))
+	(when (string-match "\\.git/annex/" target)
+	  (call-process "git" nil nil nil "annex" "edit"
+			(file-relative-name buffer-file-name default-directory))
+	  (let ((here (point-marker)))
+	    (unwind-protect
+		(revert-buffer nil t t)
+	      (goto-char here)))
+	  (add-hook 'kill-buffer-hook 'git-annex-add-file nil t)
+	  (setq buffer-read-only t))))
+    (when (and buffer-file-name (not buffer-read-only)
+	       (not (file-symlink-p buffer-file-name)))
+      (let ((cur (current-buffer))
+	    (name buffer-file-name)
+	    (result))
+	(with-temp-buffer
+	  (call-process "git" nil t nil "diff-files" "--diff-filter=T" "-G^[./]*\\.git/annex/objects/" "--name-only" "--" (file-relative-name name default-directory))
+	  (setq result (buffer-string)))
+	(unless (string= result "")
+	  (git-annex-add-file)
+	  (let ((here (point-marker)))
+	    (unwind-protect
+		(revert-buffer nil t t)
+	      (goto-char here)))
+	  (setq buffer-read-only nil)))))
   )
 
 (defadvice toggle-read-only (before git-annex-edit-file activate)
